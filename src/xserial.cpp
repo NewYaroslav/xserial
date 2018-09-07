@@ -1085,7 +1085,7 @@ namespace xserial {
         #endif
      }
 
-} // end namespace RobMind
+} // end namespace xserial
 
 
 #ifdef __linux
