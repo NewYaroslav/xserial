@@ -1001,7 +1001,7 @@ namespace xserial {
         return numOpenComPort;
      }
 
-     char ComPort::getStateComPort(void) {
+     bool ComPort::getStateComPort(void) {
         return isOpenPort;
      }
 

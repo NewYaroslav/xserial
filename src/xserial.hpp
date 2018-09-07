@@ -41,6 +41,7 @@
 //#define LINUX_SPECIFY_NAME_COM_PORT "ttyACM"
 
 namespace xserial {
+
     /**@brief Класс для работы с COM портом.
         @version 1.0
         @date Февраль 2017 года
@@ -297,10 +298,10 @@ namespace xserial {
         unsigned short getNumComPort(void);
 
         /**@brief Получить состояние порта
-        Функция возвращает 1 если порт открыт и 0 если иначе.
+        Функция возвращает true если порт открыт и false если иначе.
         @return состояние порта
         */
-        char getStateComPort(void);
+        bool getStateComPort(void);
 
         /**@brief Показать список доступых портов
         Функция печатает в терминале список доступых портов.
