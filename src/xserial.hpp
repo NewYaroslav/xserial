@@ -29,7 +29,7 @@
 #ifndef COM_PORT_HPP_INCLUDED
 #define COM_PORT_HPP_INCLUDED
 
-#ifdef __MINGW32__
+#if defined(__MINGW32__) || defined(_WIN32)
 #include <windows.h>
 #endif
 
@@ -94,7 +94,7 @@ namespace xserial {
         const char defaultDataBits = 8; ///< Количесвто бит данных по умолчанию
         const eMode defaultMode = COM_SYNCHRONOUS; ///< Настройка режима работы с портом по умолчанию
     private:
-        #ifdef __MINGW32__
+        #if defined(__MINGW32__) || defined(_WIN32)
         HANDLE hComPort = NULL;
         DCB	dcbComPort;
         COMMTIMEOUTS commTimeoutsComPort;
