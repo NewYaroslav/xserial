@@ -57,7 +57,7 @@ namespace xserial {
         // например #define LINUX_SPECIFY_NAME_COM_PORT "ttyACM"
 
 
-        RobMind::ComPort com(0, 115200); // открыть порт COM0 со скоростью 115200
+        xserial::ComPort com(0, 115200); // открыть порт COM0 со скоростью 115200
         com.print("Test Com Port\n"); // отправить в порт сообщение Test Com Port
         int k = com.bytesToRead(); // получить количество доступых для считывания байт
         cout << com.getLine() << endl; // считать из порта строку до символа переноса строки
