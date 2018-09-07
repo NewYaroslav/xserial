@@ -118,7 +118,7 @@ namespace xserial {
         /**@brief Инициализация порта с настройками по умолчанию
         При инициализации класса будет октрыт первый из доступых портов
         со скоростью 9600, с 1-м стоп битом, без проверки четности и длиной
-        даных 8 бит.
+        данных 8 бит.
         */
         ComPort();
 
@@ -132,7 +132,7 @@ namespace xserial {
 
         /**@brief Инициализация порта с настройкой номера порта и его скорости
         При инициализации класса будет октрыт указанный порт с указанной скоростью,
-        с 1-м стоп битом, без проверки четности и длиной даных 8 бит.
+        с 1-м стоп битом, без проверки четности и длиной данных 8 бит.
         @param[in] numComPort номер порта
         @param[in] baudRate скорость
         */
@@ -178,20 +178,20 @@ namespace xserial {
 
         /**@brief Открыть указанный порт с настройкой скорости
         Функция отктроет указанный порт с указанной скоростью,
-        с 1-м стоп битом, без проверки четности и длиной даных 8 бит.
+        с 1-м стоп битом, без проверки четности и длиной данных 8 бит.
         @param[in] numComPort номер порта
         @param[in] baudRate скорость
         @return true в случе успешного выполнения и false в случае провала
         */
         bool open(unsigned short numComPort, unsigned long baudRate);
 
-        /**@brief Открыть указанный порт с настройкой скорости
+        /**@brief Открыть указанный порт с настройкой всех параметров
         Функция откроет указанный порт с настройкой всех параметров
         @param[in] numComPort номер порта
         @param[in] baudRate скорость
         @param[in] parity настройка проверки четности
-        @param[in] dataBits количесвто бит данных
-        @param[in] stopBits настройка количесвта стоп битов
+        @param[in] dataBits количество бит данных
+        @param[in] stopBits настройка количества стоп битов
         @return true в случе успешного выполнения и false в случае провала
         */
         bool open(unsigned short numComPort, unsigned long baudRate, eParity parity, char dataBits, eStopBit stopBits);
@@ -200,8 +200,8 @@ namespace xserial {
         Функция откроет первый доступынй порт с настройкой всех параметров
         @param[in] baudRate скорость
         @param[in] parity настройка проверки четности
-        @param[in] dataBits количесвто бит данных
-        @param[in] stopBits настройка количесвта стоп битов
+        @param[in] dataBits количество бит данных
+        @param[in] stopBits настройка количества стоп битов
         @return true в случе успешного выполнения и false в случае провала
         */
         bool open(unsigned long baudRate, eParity parity, char dataBits, eStopBit stopBits);
