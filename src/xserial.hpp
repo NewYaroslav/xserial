@@ -1,7 +1,7 @@
 /*
 * xserial - library for working with serial port.
 *
-* Copyright (c) 2016 - 2017 Yaroslav Barabanov. Email: elektroyar@yandex.ru
+* Copyright (c) 2018 Elektro Yar. Email: git.electroyar@gmail.com
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
