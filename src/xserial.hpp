@@ -29,16 +29,18 @@
 #ifndef COM_PORT_HPP_INCLUDED
 #define COM_PORT_HPP_INCLUDED
 
-#if defined(__MINGW32__) || defined(_WIN32)
+#if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
 #include <windows.h>
 #endif
 
 #include <string>
 #include <vector>
 #include <sstream>
+#include <chrono>
 
-//#define LINUX_SPECIFY_NAME_COM_PORT "ttyUSB"
-//#define LINUX_SPECIFY_NAME_COM_PORT "ttyACM"
+using TimePoint = typename std::chrono::steady_clock::time_point;
+using Duration = typename std::chrono::steady_clock::duration;
+using Seconds = typename std::chrono::duration<long long>;
 
 namespace xserial {
 
@@ -53,9 +55,8 @@ namespace xserial {
         @code
         // в Linux устройства могут называться по разному
         // если вам нужно по умолчанию подключаться не к ttyUSBх (где
-        // x - номер), вы можете объявить имя устройства в .h .hpp файлах
-        // например #define LINUX_SPECIFY_NAME_COM_PORT "ttyACM"
-
+        // x - номер), вы можете указать название устройства последним параметром 
+	// в методе openPort и в конструкторе ComPort
 
         xserial::ComPort com(0, 115200); // открыть порт COM0 со скоростью 115200
         com.print("Test Com Port\n"); // отправить в порт сообщение Test Com Port
@@ -87,14 +88,14 @@ namespace xserial {
             COM_SYNCHRONOUS, ///< синхронный режим
             COM_ASYNCHRONOUS, ///< асинхронный режим, не используется в текущей версии
         };
-
+      
         const unsigned long defaultBaudRate = 9600; ///< Скорость UART по умолчанию
         const eParity defaultParity = COM_PORT_NOPARITY; ///< Настройка проверки четности по умолчанию
         const eStopBit defaultStopBit = COM_PORT_ONESTOPBIT; ///< Настройка стопового бита по умолчанию
         const char defaultDataBits = 8; ///< Количесвто бит данных по умолчанию
         const eMode defaultMode = COM_SYNCHRONOUS; ///< Настройка режима работы с портом по умолчанию
-    private:
-        #if defined(__MINGW32__) || defined(_WIN32)
+          private:
+        #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
         HANDLE hComPort = NULL;
         DCB	dcbComPort;
         COMMTIMEOUTS commTimeoutsComPort;
@@ -102,17 +103,21 @@ namespace xserial {
         #endif
         #ifdef __linux
         int hComPort = 0;
-            #ifndef LINUX_SPECIFY_NAME_COM_PORT
-            std::string comPortName = "ttyUSB";
-            #else
-            std::string comPortName = LINUX_SPECIFY_NAME_COM_PORT;
-            #endif
         #endif
+        long timeout_ = 0;
         bool isOpenPort = false;
         unsigned char autoFoundComPort = 0;
         unsigned short numOpenComPort;
-        bool openPort(unsigned short numComPort, unsigned long baudRate, eParity parity, char dataBits, eStopBit stopBits, eMode comPortMode);
+        bool openPort(unsigned short numComPort,
+		      unsigned long baudRate,
+		      eParity parity,
+		      char dataBits,
+		      eStopBit stopBits,
+		      eMode comPortMode,
+		      long timeout = 0,
+		      std::string comPortName = "ttyUSB");
         bool foundComPort(void);
+        bool countdownIsOver(const TimePoint, long);
     public:
 
         /**@brief Инициализация порта с настройками по умолчанию
@@ -144,9 +149,16 @@ namespace xserial {
         @param[in] baudRate скорость
         @param[in] parity настройка проверки четности
         @param[in] dataBits количесвто бит данных
-        @param[in] stopBits настройка количесвта стоп битов
+        @param[in] stopBits настройка количества стоп битов
+	@param[in] timeout  настройка прерывания при чтении строки
         */
-        ComPort(unsigned short numComPort, unsigned long baudRate, eParity parity, char dataBits, eStopBit stopBits);
+      ComPort(unsigned short numComPort,
+	      unsigned long baudRate,
+	      eParity parity,
+	      char dataBits,
+	      eStopBit stopBits,
+	      long timeout = 0,
+	      std::string linuxNameComPort = "ttyUSB");
 
         /**@brief Инициализация первого доступного порта с настройкой всех параметров
         При инициализации класса будет октрыт первый доступный порт с настройкой всех параметров
@@ -192,9 +204,16 @@ namespace xserial {
         @param[in] parity настройка проверки четности
         @param[in] dataBits количество бит данных
         @param[in] stopBits настройка количества стоп битов
+	@param[in] timeout  настройка прерывания при чтении строки
         @return true в случе успешного выполнения и false в случае провала
         */
-        bool open(unsigned short numComPort, unsigned long baudRate, eParity parity, char dataBits, eStopBit stopBits);
+        bool open(unsigned short numComPort,
+		  unsigned long baudRate,
+		  eParity parity,
+		  char dataBits,
+		  eStopBit stopBits,
+		  long timeout,
+		  std::string linuxNameComPort);
 
         /**@brief Открыть первый доступный порт с настройкой всех параметров
         Функция откроет первый доступынй порт с настройкой всех параметров
@@ -244,7 +263,7 @@ namespace xserial {
         до символа окончания строки '\n'.
         @return считанная строка
         */
-        std::string getLine(void);
+        std::string getLine();
 
         /**@brief Получить из порта слово
         Функция считывает из порта массив данных типа string
