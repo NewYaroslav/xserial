@@ -20,11 +20,11 @@
 * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 * SOFTWARE.
-*/
+*/ 
 
 #include "xserial.hpp"
 
-#if defined(__MINGW32__) || defined(_WIN32)
+#if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
 #include <windows.h>
 #include <iostream>
 #endif
@@ -48,9 +48,6 @@
 #include <sstream>
 #include <ctime>
 
-// время ожидания получения символов до символа '\n'
-#define COM_PORT_GETLINE_MAX_TIME 1000
-
 #ifdef __linux
 // получить список COM портов
 std::list<std::string> getComList(void);
@@ -62,14 +59,22 @@ static std::string get_driver(const std::string& tty);
 
 namespace xserial {
 
-    bool ComPort::openPort(unsigned short numComPort, unsigned long baudRate, eParity parity, char dataBits, eStopBit stopBits, eMode comPortMode) {
+    bool ComPort::openPort(unsigned short numComPort,
+			   unsigned long baudRate,
+			   eParity parity,
+			   char dataBits,
+			   eStopBit stopBits,
+			   eMode comPortMode,
+			   long timeout,
+			   std::string comPortName) {
         if (isOpenPort) {
             close();
             isOpenPort = false;
         }
         numOpenComPort = numComPort;
-        #if defined(__MINGW32__) || defined(_WIN32)
-        std::string comPortName = "\\\\.\\COM";
+	timeout_ = timeout;
+        #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
+        std::string _comPortName = "\\\\.\\COM";
         ZeroMemory(&dcbComPort,sizeof(DCB));
         //char dcbBuffer[256];
         //sprintf(dcbBuffer,"baud=%d parity=N data=8 stop=1", baudRate);
@@ -83,9 +88,9 @@ namespace xserial {
             isOpenPort = false;
             return false;
         }
-        comPortName += std::to_string(numComPort);
+        _comPortName += std::to_string(numComPort);
         //printf("num = %d\n",numComPort);
-        hComPort = CreateFile(comPortName.c_str(),GENERIC_READ | GENERIC_WRITE,0,NULL,OPEN_EXISTING,0,NULL);
+        hComPort = CreateFileA(_comPortName.c_str(),GENERIC_READ | GENERIC_WRITE,0,NULL,OPEN_EXISTING,0,NULL);
         if (hComPort == INVALID_HANDLE_VALUE) {
             printf("Error opening port\r\n");
             isOpenPort = false;
@@ -189,8 +194,9 @@ namespace xserial {
             return false;
         };
         isOpenPort = true;
+	
         return true;
-        #endif
+        #endif  
 
         #ifdef __linux
         std::string _comPortName("/dev/");
@@ -346,8 +352,8 @@ namespace xserial {
                 return false;
             break;
         }
-        cfsetospeed (&tty, baudRate);
-        cfsetispeed (&tty, baudRate);
+	// cfsetospeed (&tty, baudRate);
+	// cfsetispeed (&tty, baudRate);
         // Setting other Port Stuff
         switch (parity) {
             case COM_PORT_EVENPARITY:
@@ -433,10 +439,10 @@ namespace xserial {
 
     bool ComPort::foundComPort(void) {
         bool isFound = 0;
-        #if defined(__MINGW32__) || defined(_WIN32)
+        #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
         char physical[65536]; // имена устройств
         // получим список устройств
-        QueryDosDevice(NULL, physical, sizeof(physical));
+        QueryDosDevice(NULL, (LPWSTR)physical, sizeof(physical));
         unsigned long i = 0;
         while(1) {
             char* nameDevice = &physical[i]; // текущее имя устройства
@@ -471,25 +477,13 @@ namespace xserial {
         std::list<std::string>::iterator it = l.begin();
         while (it != l.end()) {
             std::string name = *it;
-            #ifndef LINUX_SPECIFY_NAME_COM_PORT
-                int pos = name.find_first_of("0123456789");
-                int pos0 = name.find_first_of("t");
-                isFound = true;
-                comPortName = name.substr(pos0, pos - pos0);
-                std::string num = name.substr(pos);
-                autoFoundComPort = atoi(const_cast<char*>(num.c_str()));
-                break;
-            #else
-            int posName = name.find(LINUX_SPECIFY_NAME_COM_PORT);
-            if (posName != std::string::npos) {
-                int pos = name.find_first_of("0123456789");
-                isFound = true;
-                comPortName = LINUX_SPECIFY_NAME_COM_PORT;
-                std::string num = name.substr(pos);
-                autoFoundComPort = atoi(num.c_str());
-                break;
-            }
-            #endif
+	    int pos = name.find_first_of("0123456789");
+	    int pos0 = name.find_first_of("t");
+            isFound = true;
+	    std::string comPortName = name.substr(pos0, pos - pos0);
+            std::string num = name.substr(pos);
+            autoFoundComPort = atoi(const_cast<char*>(num.c_str()));
+            break;
             it++;
         }
         return isFound;
@@ -534,13 +528,25 @@ namespace xserial {
         return openPort(numComPort, baudRate, defaultParity, defaultDataBits, defaultStopBit, defaultMode);
     }
 
-    ComPort::ComPort(unsigned short numComPort, unsigned long baudRate, eParity parity, char dataBits, eStopBit stopBits) {
-        openPort(numComPort, baudRate, parity, dataBits, stopBits, defaultMode);
+  ComPort::ComPort(unsigned short numComPort,
+		   unsigned long baudRate,
+		   eParity parity,
+		   char dataBits,
+		   eStopBit stopBits,
+		   long timeout,
+		   std::string linuxNameComPort) {
+      openPort(numComPort, baudRate, parity, dataBits, stopBits, defaultMode, timeout, linuxNameComPort);
     }
 
-    bool ComPort::open(unsigned short numComPort, unsigned long baudRate, eParity parity, char dataBits, eStopBit stopBits) {
+  bool ComPort::open(unsigned short numComPort,
+		     unsigned long baudRate,
+		     eParity parity,
+		     char dataBits,
+		     eStopBit stopBits,
+		     long timeout,
+		     std::string linuxNameComPort ) {
         close();
-        return openPort(numComPort, baudRate, parity, dataBits, stopBits, defaultMode);
+        return openPort(numComPort, baudRate, parity, dataBits, stopBits, defaultMode, timeout, linuxNameComPort);
     }
 
     ComPort::ComPort(unsigned long baudRate, eParity parity, char dataBits, eStopBit stopBits) {
@@ -564,7 +570,7 @@ namespace xserial {
 
     ComPort::~ComPort() {
         if (isOpenPort) {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             CloseHandle(hComPort);
             #endif
             #ifdef __linux
@@ -576,7 +582,7 @@ namespace xserial {
 
     bool ComPort::write(char* data, unsigned long len) {
         if (isOpenPort) {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             DWORD dwBytesWrite = len; // кол-во записанных байтов
             if(!WriteFile(hComPort, data, len, &dwBytesWrite, NULL)){
                 printf("write error\r\n");
@@ -597,7 +603,7 @@ namespace xserial {
                 return true;
             #endif
         } else {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             printf("com port is not open!\r\n");
             return false;
             #endif
@@ -610,7 +616,7 @@ namespace xserial {
 
     unsigned long ComPort::read(char* data, unsigned long maxNumBytesRead) {
         if (isOpenPort) {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             DWORD dwBytesRead = 0;
             DWORD numRedByte, temp;
             COMSTAT comstat;
@@ -637,7 +643,7 @@ namespace xserial {
             }
             #endif
         } else {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             printf("com port is not open!\r\n");
             return 0;
             #endif
@@ -650,7 +656,7 @@ namespace xserial {
 
     unsigned long ComPort::bytesToRead(void) {
         if (isOpenPort) {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             unsigned long numRedByte, temp; // temp - заглушка
             COMSTAT comstat; // структура для получения притяных байтов
             ClearCommError(hComPort, &temp, &comstat); // заполнить структуру COMSTAT
@@ -664,7 +670,7 @@ namespace xserial {
             return bytes;
             #endif
         } else {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             printf("com port is not open!\r\n");
             return 0;
             #endif
@@ -678,7 +684,7 @@ namespace xserial {
     char ComPort::readByte(void) {
         char data = 0;
         if (isOpenPort) {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             DWORD dwBytesRead; // считанные байты
             DWORD numRedByte, temp; // temp - заглушка
             COMSTAT comstat; // структура для получения притяных байтов
@@ -718,7 +724,7 @@ namespace xserial {
                 return '\0';
             #endif
         } else {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             printf("com port is not open!\r\n");
             return 0;
             #endif
@@ -732,7 +738,7 @@ namespace xserial {
 
     void ComPort::close(void) {
         if (isOpenPort) {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             CloseHandle(hComPort);
             #endif
             #ifdef __linux
@@ -743,27 +749,38 @@ namespace xserial {
         }
     }
 
-    std::string ComPort::getLine(void) {
+  std::string ComPort::getLine() {
         char data;
         std::string strLine = "";
         if (isOpenPort) {
-            #if defined(__MINGW32__) || defined(_WIN32)
+	  
+	  const TimePoint start_time = std::chrono::steady_clock::now(); 
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             DWORD dwBytesRead; // считанные байты
             DWORD numRedByte, temp; // temp - заглушка
             COMSTAT comstat; // структура для получения притяных байтов
-            while(1) {
+            while(1) { 
                 ClearCommError(hComPort, &temp, &comstat); // заполнить структуру COMSTAT
                 numRedByte = comstat.cbInQue; //получить количество принятых байтов
                 // будем проверять наличие принятого байта, пока он не появится
                 while(numRedByte == 0) {
                     ClearCommError(hComPort, &temp, &comstat); // заполнить структуру COMSTAT
                     numRedByte = comstat.cbInQue; //получить количество принятых байтов
+		    if(timeout_ != 0)
+		      if(countdownIsOver(start_time, timeout_)){
+		      return "timeout";
+		  }
                 }
                 // считаем 1 байт
                 if(!ReadFile(hComPort, &data, 1, &dwBytesRead, NULL)){
                     printf("read error\r\n");
                     return strLine;
                 }
+	        if(timeout_ != 0)
+		  if(countdownIsOver(start_time, timeout_)){
+		     return "timeout";
+		  }
+		 
                 if (dwBytesRead > 0) {
                     // если был получен символ завершения строки
                     if (data == '\n')
@@ -782,6 +799,10 @@ namespace xserial {
                 // будем проверять наличие принятого байта, пока он не появится
                 while(bytesAvaiable == 0) {
                     ioctl(hComPort, FIONREAD, &bytesAvaiable);
+		    if(timeout_ != 0)
+		      if(countdownIsOver(start_time, timeout_)){
+		       return "timeout";
+		      }
                 }
                 // считаем 1 байт
                 int iOut = ::read(hComPort, &data, 1);
@@ -789,6 +810,12 @@ namespace xserial {
                     printf("read error\n");
                     return strLine;
                 }
+		
+		 if(timeout_ != 0)
+		  if(countdownIsOver(start_time, timeout_)){
+		    return "timeout";
+		  }
+		 
                 if (iOut > 0) {
                     // если был получен символ завершения строки
                     if (data == '\n')
@@ -800,7 +827,7 @@ namespace xserial {
             return strLine;
             #endif
         } else {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             printf("com port is not open!\r\n");
             return strLine;
             #endif
@@ -812,15 +839,21 @@ namespace xserial {
         return strLine;
     }
 
+  bool ComPort::countdownIsOver(const TimePoint start_time, long timeout){
+    TimePoint end_time = std::chrono::steady_clock::now(); 
+    const std::chrono::steady_clock::duration dur = end_time - start_time;
+    return (Seconds(timeout) < dur);
+  }
+
     std::string ComPort::getWord(void) {
         char data;
         bool isStart = false;
         std::string strLine = "";
         if (isOpenPort) {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             DWORD dwBytesRead; // считанные байты
             DWORD numRedByte, temp; // temp - заглушка
-            COMSTAT comstat; // структура для получения притяных байтов
+            COMSTAT comstat; // структура для получения принятых байт
             while(1) {
                 ClearCommError(hComPort, &temp, &comstat); // заполнить структуру COMSTAT
                 numRedByte = comstat.cbInQue; //получить количество принятых байтов
@@ -880,7 +913,7 @@ namespace xserial {
             return strLine;
             #endif
         } else {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             printf("com port is not open!\r\n");
             return "";
             #endif
@@ -901,7 +934,7 @@ namespace xserial {
 
     void ComPort::flushRx(void) {
         if (isOpenPort) {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             PurgeComm(hComPort, PURGE_RXCLEAR | PURGE_RXABORT);
             #endif
         }
@@ -909,7 +942,7 @@ namespace xserial {
 
     void ComPort::flushTx(void) {
         if (isOpenPort) {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             PurgeComm(hComPort, PURGE_TXCLEAR | PURGE_TXABORT);
             #endif
         }
@@ -917,7 +950,7 @@ namespace xserial {
 
     void ComPort::flushRxAndTx(void) {
         if (isOpenPort) {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             PurgeComm(hComPort, PURGE_RXCLEAR | PURGE_RXABORT);
             PurgeComm(hComPort, PURGE_TXCLEAR | PURGE_TXABORT);
             #endif
@@ -929,7 +962,7 @@ namespace xserial {
 
     bool ComPort::operator << (char data) {
         if (isOpenPort) {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             DWORD dwBytesWrite = 0; // кол-во записанных байтов
             if(!WriteFile(hComPort, &data, 1, &dwBytesWrite, NULL)){
                 printf("write error\r\n");
@@ -950,7 +983,7 @@ namespace xserial {
                 return true;
             #endif
         } else {
-            #if defined(__MINGW32__) || defined(_WIN32)
+            #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
             printf("com port is not open!\r\n");
             return false;
             #endif
@@ -1013,14 +1046,14 @@ namespace xserial {
             //std::cout << *it << std::endl;
             std::string text = *it;
             text += "\n";
-            ::printf(text.c_str());
+            ::printf("%s",text.c_str());
             it++;
         }
         #endif
-        #if defined(__MINGW32__) || defined(_WIN32)
+        #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
         char physical[65536]; // имена устройств
         // получим список устройств
-        QueryDosDevice(NULL, physical, sizeof(physical));
+        QueryDosDevice(NULL, (LPWSTR)physical, sizeof(physical));
         unsigned long i = 0;
         while(1) {
             char* nameDevice = &physical[i]; // текущее имя устройства
@@ -1057,10 +1090,10 @@ namespace xserial {
             it++;
         }
         #endif
-        #if defined(__MINGW32__) || defined(_WIN32)
+        #if defined(__MINGW32__) || defined(_WIN32) || defined(__MINGW64__) || defined(_WIN64)
         char physical[65536]; // имена устройств
         // получим список устройств
-        QueryDosDevice(NULL, physical, sizeof(physical));
+        QueryDosDevice(NULL, (LPWSTR)physical, sizeof(physical));
         unsigned long i = 0;
         serial.resize(0);
         serial.clear();
